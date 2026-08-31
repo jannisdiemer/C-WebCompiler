@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # C++ Compiler in PHP
 
 A C++ compiler written in PHP as a learning and hobby project.
@@ -34,3 +35,6 @@ Planned first version:
 - functions
 - `return`
 - basic expressions
+=======
+# C-WebCompiler
+>>>>>>> 691a29a53d5a773bd9b302eef5ec17a36b80ba2d
