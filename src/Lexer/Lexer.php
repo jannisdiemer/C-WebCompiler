@@ -1,4 +1,5 @@
 <?php
+
 namespace Compiler\Lexer;
 
 use RuntimeException;
@@ -6,120 +7,196 @@ use RuntimeException;
 require_once __DIR__ . '/TokenType.php';
 require_once __DIR__ . '/Token.php';
 
-$source = file_get_contents(__DIR__ . "/../../examples/Integer.cpp");
+class Lexer
+{
+    private string $source;
+    private int $position = 0;
+    private array $tokens = [];
 
-$position = 0;
+    public function __construct()
+    {
+        $source = file_get_contents(
+            __DIR__ . "/../../examples/Integer.cpp"
+        );
 
-$tokens = [];
-
-if ($source === false) {
-    throw new RuntimeException("Could not read source file");
-}
-
-function lex_string(String $source, Int &$position) {
-    $value = "";
-
-    $position++;
-
-    while($position < strlen($source)) {
-        $char = $source[$position];
-
-        if($char == '"') {
-            $position++;
-            return $value;
+        if ($source === false) {
+            throw new RuntimeException("Could not read source file");
         }
 
-        $value .= $char;
-        $position++;;
+        $this->source = $source;
+
+        $this->tokenize();
     }
 
-    throw new RuntimeException('Missing closing "');
-    
-}
-
-function lex_char(String $source, Int &$position) {
-    $value = "";
-
-    while($position < strlen($source) && (ctype_alnum($source[$position]) || $source[$position] === '_')) {
-        $char = $source[$position];
-        $value .= $char;
-        $position++;;
+    public function getTokens(): array
+    {
+        return $this->tokens;
     }
 
-    return $value;
-}
+    private function tokenize(): void
+    {
+        while ($this->position < strlen($this->source)) {
 
-while ($position < strlen($source)) {
-    $char = $source[$position];
+            $char = $this->source[$this->position];
 
-    if(ctype_space($char)) {
-        $position++;
-        continue;
-    }
+            if (ctype_space($char)) {
+                $this->position++;
+                continue;
+            }
 
-    if($char === '{') {
-        $tokens[] = new Token(TokenType::LEFT_BRACE, "{");
-        $position++;
-        continue;
-    }
+            if ($char === '{') {
+                $this->tokens[] = new Token(
+                    TokenType::LEFT_BRACE,
+                    "{"
+                );
 
-    if($char === '}') {
-        $tokens[] = new Token(TokenType::RIGHT_BRACE, "}");
-        $position++;
-        continue;
-    }
+                $this->position++;
+                continue;
+            }
 
-    if($char === '(') {
-        $tokens[] = new Token(TokenType::LEFT_PAREN, "(");
-        $position++;
-        continue;
-    }
+            if ($char === '}') {
+                $this->tokens[] = new Token(
+                    TokenType::RIGHT_BRACE,
+                    "}"
+                );
 
-    if($char === ')') {
-        $tokens[] = new Token(TokenType::RIGHT_PAREN, ")");
-        $position++;
-        continue;
-    }
+                $this->position++;
+                continue;
+            }
 
-    if($char === ';') {
-        $tokens[] = new Token(TokenType::SEMICOLON, ";");
-        $position++;
-        continue;
-    }
+            if ($char === '(') {
+                $this->tokens[] = new Token(
+                    TokenType::LEFT_PAREN,
+                    "("
+                );
 
-    if(ctype_digit($char)) {
-        $tokens[] = new Token(TokenType::INTEGER_LITERAL, $char);
-        $position++;
-        continue;
-    }
+                $this->position++;
+                continue;
+            }
 
-    if($char === '"') {
-        $tokens[] = new Token(TokenType::STRING_LITERAL, lex_string($source, $position));
-        continue;
-    }
+            if ($char === ')') {
+                $this->tokens[] = new Token(
+                    TokenType::RIGHT_PAREN,
+                    ")"
+                );
 
-    if(ctype_alpha($char) || $char === '_') {
-        $word =  lex_char($source, $position); 
+                $this->position++;
+                continue;
+            }
 
-        if($word === "int") {
-            $tokens[] = new Token(TokenType::INT, $word); 
+            if ($char === ';') {
+                $this->tokens[] = new Token(
+                    TokenType::SEMICOLON,
+                    ";"
+                );
+
+                $this->position++;
+                continue;
+            }
+
+            if (ctype_digit($char)) {
+                $value = "";
+
+                while (
+                    $this->position < strlen($this->source)
+                    && ctype_digit($this->source[$this->position])
+                ) {
+                    $value .= $this->source[$this->position];
+                    $this->position++;
+                }
+
+                $this->tokens[] = new Token(
+                    TokenType::INTEGER_LITERAL,
+                    $value
+                );
+
+                continue;
+            }
+
+            if ($char === '"') {
+                $this->tokens[] = new Token(
+                    TokenType::STRING_LITERAL,
+                    $this->lexString()
+                );
+
+                continue;
+            }
+
+            if (ctype_alpha($char) || $char === '_') {
+                $word = $this->lexChar();
+
+                if ($word === "int") {
+                    $this->tokens[] = new Token(
+                        TokenType::INT,
+                        $word
+                    );
+                }
+                elseif ($word === "return") {
+                    $this->tokens[] = new Token(
+                        TokenType::RETURN,
+                        $word
+                    );
+                }
+                else {
+                    $this->tokens[] = new Token(
+                        TokenType::IDENTIFIER,
+                        $word
+                    );
+                }
+
+                continue;
+            }
+
+            throw new RuntimeException(
+                "Unknown character: " . $char
+            );
         }
-        elseif($word === "return") {
-            $tokens[] = new Token(TokenType::RETURN, $word); 
-        }
-        else {
-            $tokens[] = new Token(TokenType::IDENTIFIER, $word); 
-        }
-        continue;
+
+        $this->tokens[] = new Token(
+            TokenType::EOF,
+            ""
+        );
     }
 
-    throw new RuntimeException("Unknown character" . $char);
+    private function lexString(): string
+    {
+        $value = "";
+
+        // Öffnendes " überspringen
+        $this->position++;
+
+        while ($this->position < strlen($this->source)) {
+
+            $char = $this->source[$this->position];
+
+            if ($char === '"') {
+                $this->position++;
+
+                return $value;
+            }
+
+            $value .= $char;
+            $this->position++;
+        }
+
+        throw new RuntimeException('Missing closing "');
+    }
+
+    private function lexChar(): string
+    {
+        $value = "";
+
+        while (
+            $this->position < strlen($this->source)
+            && (
+                ctype_alnum($this->source[$this->position])
+                || $this->source[$this->position] === '_'
+            )
+        ) {
+            $value .= $this->source[$this->position];
+            $this->position++;
+        }
+
+        return $value;
+    }
 }
-
-$tokens[] = new Token(TokenType::EOF, "");
-
-foreach ($tokens as $token) {
-    echo $token->type->name . " : " . $token->value . PHP_EOL;
-}
-
-?>
