@@ -16,11 +16,13 @@ enum TokenType
     case RIGHT_BRACE;
 
     case RETURN;
+    case COUT;
 
     case INTEGER_LITERAL;
     case FLOAT_LITERAL;
     case STRING_LITERAL;
     case SEMICOLON;
+    case DOUBLE_COLON;
 
     case EOF;
 

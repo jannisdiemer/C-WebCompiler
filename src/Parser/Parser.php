@@ -9,6 +9,8 @@ use Compiler\AST\Program;
 use Compiler\AST\FunctionDeclaration;
 use Compiler\AST\ReturnStatement;
 use Compiler\AST\IntegerLiteral;
+use Compiler\AST\VariableDeclaration;
+use Compiler\AST\OutputStatement;
 
 class Parser
 {
@@ -58,27 +60,20 @@ class Parser
 
     private function parseFunction(): FunctionDeclaration
     {
-        // int
         $returnType = $this->expect(TokenType::INT);
-
-        // main
         $name = $this->expect(TokenType::IDENTIFIER);
 
-        // (
         $this->expect(TokenType::LEFT_PAREN);
-
-        // )
         $this->expect(TokenType::RIGHT_PAREN);
 
-        // {
         $this->expect(TokenType::LEFT_BRACE);
 
         $body = [];
 
-        // return 5;
-        $body[] = $this->parseReturnStatement();
+        while ($this->current()->type !== TokenType::RIGHT_BRACE) {
+            $body[] = $this->parseStatement();
+        }
 
-        // }
         $this->expect(TokenType::RIGHT_BRACE);
 
         return new FunctionDeclaration(
@@ -88,15 +83,87 @@ class Parser
         );
     }
 
-    private function parseReturnStatement(): ReturnStatement
+    private function parseStatement()
     {
-        // return
-        $this->expect(TokenType::RETURN);
+        switch ($this->current()->type) {
 
-        // 5
+            case TokenType::INT:
+                return $this->parseVariableDeclaration();
+
+            case TokenType::COUT:
+                return $this->parseOutputStatement();
+
+            case TokenType::RETURN:
+                return $this->parseReturnStatement();
+
+            default:
+                throw new \RuntimeException(
+                    "Unknown statement: "
+                    . $this->current()->type->name
+                );
+        }
+    }
+
+    private function parseVariableDeclaration(): VariableDeclaration
+    {
+        $type = $this->expect(TokenType::INT);
+        $name = $this->expect(TokenType::IDENTIFIER);
+
+        $this->expect(TokenType::EQUAL);
+
         $value = $this->expect(TokenType::INTEGER_LITERAL);
 
-        // ;
+        $this->expect(TokenType::SEMICOLON);
+
+        return new VariableDeclaration(
+            $type->value,
+            $name->value,
+            new IntegerLiteral(
+                (int) $value->value
+            )
+        );
+    }
+
+    private function parseOutputStatement(): OutputStatement
+    {
+        $this->expect(TokenType::COUT);
+
+        $value = $this->current();
+
+        if ($value->type === TokenType::IDENTIFIER) {
+            $this->advance();
+
+            $this->expect(TokenType::SEMICOLON);
+
+            return new OutputStatement(
+                "identifier",
+                $value->value
+            );
+        }
+
+        if ($value->type === TokenType::STRING_LITERAL) {
+            $this->advance();
+
+            $this->expect(TokenType::SEMICOLON);
+
+            return new OutputStatement(
+                "string",
+                $value->value
+            );
+        }
+
+        throw new \RuntimeException(
+            "Expected identifier or string after std::cout, got "
+            . $value->type->name
+        );
+    }
+
+    private function parseReturnStatement(): ReturnStatement
+    {
+        $this->expect(TokenType::RETURN);
+
+        $value = $this->expect(TokenType::INTEGER_LITERAL);
+
         $this->expect(TokenType::SEMICOLON);
 
         return new ReturnStatement(

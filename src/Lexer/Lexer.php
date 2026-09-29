@@ -7,8 +7,7 @@ use RuntimeException;
 require_once __DIR__ . '/TokenType.php';
 require_once __DIR__ . '/Token.php';
 
-class Lexer
-{
+class Lexer{
     private string $source;
     private int $position = 0;
     private array $tokens = [];
@@ -16,7 +15,7 @@ class Lexer
     public function __construct()
     {
         $source = file_get_contents(
-            __DIR__ . "/../../examples/Integer.cpp"
+            __DIR__ . "/../../examples/HelloWorld.cpp"
         );
 
         if ($source === false) {
@@ -28,16 +27,25 @@ class Lexer
         $this->tokenize();
     }
 
-    public function getTokens(): array
-    {
+    public function getTokens(): array{
         return $this->tokens;
     }
 
-    private function tokenize(): void
-    {
+    private function tokenize(): void{
         while ($this->position < strlen($this->source)) {
 
             $char = $this->source[$this->position];
+
+            if ($char === '#') {
+                while (
+                    $this->position < strlen($this->source)
+                    && $this->source[$this->position] !== "\n"
+                ) {
+                    $this->position++;
+                }
+
+                continue;
+            }
 
             if (ctype_space($char)) {
                 $this->position++;
@@ -121,11 +129,32 @@ class Lexer
 
                 continue;
             }
+            
+            if($char === ":" && $this->position + 1 < strlen($this->source) && $this->source[$this->position + 1] === ':' ){
+                $this->tokens[] = new Token(
+                    TokenType::DOUBLE_COLON, 
+                    "::"
+                );
+
+                $this->position +=2;
+                continue;
+            }
 
             if (ctype_alpha($char) || $char === '_') {
                 $word = $this->lexChar();
 
-                if ($word === "int") {
+                if (
+                    $word === "std"
+                    && substr($this->source, $this->position, 6) === "::cout"
+                ) {
+                    $this->tokens[] = new Token(
+                        TokenType::COUT,
+                        "std::cout"
+                    );
+
+                    $this->position += 6;
+                }
+                elseif ($word === "int") {
                     $this->tokens[] = new Token(
                         TokenType::INT,
                         $word
@@ -158,8 +187,7 @@ class Lexer
         );
     }
 
-    private function lexString(): string
-    {
+    private function lexString(): string{
         $value = "";
 
         // Öffnendes " überspringen
@@ -182,8 +210,7 @@ class Lexer
         throw new RuntimeException('Missing closing "');
     }
 
-    private function lexChar(): string
-    {
+    private function lexChar(): string{
         $value = "";
 
         while (

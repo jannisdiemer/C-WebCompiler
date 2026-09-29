@@ -2,11 +2,11 @@
 
 namespace Compiler\AST;
 
-class Program {
+class Program{
     public array $functions = [];
 
     public function addFunction(FunctionDeclaration $function): void {
-        $this->$functions[] = $function;
+        $this->functions[] = $function;
     }
 }
 ?>
